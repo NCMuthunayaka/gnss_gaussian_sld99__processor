@@ -46,21 +46,19 @@ def _dms(deg):
 
 def make_plot(raw, clean, result, last_iter, sld99=None):
     """Generate high-quality geodetic scatter plot and Gaussian error distribution graphs."""
-    fig = plt.figure(figsize=(14, 8))
+    fig = plt.figure(figsize=(10, 22))
     fig.patch.set_facecolor("#0f172a")
 
     gs = gridspec.GridSpec(
-        2, 3,
-        width_ratios=[2.4, 1.1, 1.1],
-        height_ratios=[1, 1],
-        hspace=0.65, wspace=0.45,
-        left=0.06, right=0.97,
-        top=0.85,  bottom=0.22)
+        4, 1,
+        hspace=0.45,
+        left=0.08, right=0.78,
+        top=0.96,  bottom=0.02)
 
-    ax_sc  = fig.add_subplot(gs[:, 0])
-    ax_hx  = fig.add_subplot(gs[0, 1])
-    ax_hy  = fig.add_subplot(gs[1, 1])
-    ax_bar = fig.add_subplot(gs[:, 2])
+    ax_sc  = fig.add_subplot(gs[0])
+    ax_hx  = fig.add_subplot(gs[1])
+    ax_hy  = fig.add_subplot(gs[2])
+    ax_bar = fig.add_subplot(gs[3])
 
     for ax in (ax_sc, ax_hx, ax_hy, ax_bar):
         ax.set_facecolor(PANEL)
@@ -99,7 +97,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_sc.set_title("Position Scatter — Gaussian Filtered",
                     color=TEXT, fontsize=12, fontweight="bold", pad=10)
     ax_sc.grid(True, color=BORDER, linewidth=0.6, zorder=1)
-    ax_sc.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=4,
+    ax_sc.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
                  fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
 
 
@@ -162,7 +160,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_bar.set_title("Sigma Zone Distribution",
                      color=TEXT, fontsize=9, fontweight="bold", pad=5)
     ax_bar.grid(True, axis="y", color=BORDER, linewidth=0.5, zorder=1)
-    ax_bar.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=3,
+    ax_bar.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   fontsize=7, facecolor=DARK, edgecolor=BORDER,
                   labelcolor=TEXT, framealpha=0.9)
     for bars in (bx, by, be):
@@ -175,7 +173,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
 
 
     fig.suptitle("GNSS Gaussian E-Threshold Analysis  \u00b7  SLD99 Transform  [EPSG:5235]",
-                 color=TEXT, fontsize=13, fontweight="bold", y=0.94)
+                 color=TEXT, fontsize=13, fontweight="bold", y=0.98)
     return fig
 
 class App(tk.Tk):
@@ -285,6 +283,26 @@ class App(tk.Tk):
 
         self.plot_frame = tk.Frame(self.nb, bg=DARK)
         self.nb.add(self.plot_frame, text="  Scatter + Gaussian Plot  ")
+
+        # Scrollable container for plots
+        self.plot_canvas = tk.Canvas(self.plot_frame, bg=DARK, highlightthickness=0)
+        self.plot_vsb = tk.Scrollbar(self.plot_frame, orient="vertical",
+                                     command=self.plot_canvas.yview, bg=BORDER, relief="flat")
+        self.plot_canvas.configure(yscrollcommand=self.plot_vsb.set)
+        self.plot_vsb.pack(side="right", fill="y")
+        self.plot_canvas.pack(side="left", fill="both", expand=True)
+
+        self.plot_inner = tk.Frame(self.plot_canvas, bg=DARK)
+        self.plot_canvas_id = self.plot_canvas.create_window((0, 0), window=self.plot_inner,
+                                                             anchor="nw")
+
+        def _on_plot_resize(e):
+            self.plot_canvas.itemconfig(self.plot_canvas_id, width=e.width)
+        self.plot_canvas.bind("<Configure>", _on_plot_resize)
+
+        def _on_plot_inner(e):
+            self.plot_canvas.configure(scrollregion=self.plot_canvas.bbox("all"))
+        self.plot_inner.bind("<Configure>", _on_plot_inner)
 
     def _build_sld99_panel(self):
         tk.Label(self.sld_frame,
@@ -627,11 +645,11 @@ class App(tk.Tk):
             ))
 
     def _show_plot(self):
-        for w in self.plot_frame.winfo_children():
+        for w in self.plot_inner.winfo_children():
             w.destroy()
         fig = make_plot(self.raw_df, self.clean_df,
                         self.result, self.iters[-1], self.sld99_res)
-        canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
+        canvas = FigureCanvasTkAgg(fig, master=self.plot_inner)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
         self.nb.select(3)
