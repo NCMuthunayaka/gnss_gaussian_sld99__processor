@@ -15,7 +15,7 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.patches import Ellipse
 
 from math_helpers import norm_fit, norm_pdf
@@ -43,6 +43,106 @@ def _dms(deg):
     s = ((abs(deg) - d) * 60 - m) * 60
     sign = "-" if deg < 0 else ""
     return f"{sign}{d}\u00b0{m:02d}'{s:06.3f}\""
+
+def enable_interactive_zoom_pan(ax):
+    """Enables scroll wheel zoom, click-drag panning, and double-click zoom toggle on a Matplotlib Axes."""
+    fig = ax.get_figure()
+    canvas = fig.canvas
+
+    state = {
+        'press': None,
+        'xlim': None,
+        'ylim': None
+    }
+
+    def on_scroll(event):
+        if event.inaxes != ax:
+            return
+        xdata = event.xdata
+        ydata = event.ydata
+        if xdata is None or ydata is None:
+            return
+
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+
+        # Zoom factor: zoom in with up scroll, out with down scroll
+        scale_factor = 0.82 if event.button == 'up' else 1.22
+
+        new_xlim = [xdata - (xdata - xlim[0]) * scale_factor,
+                    xdata + (xlim[1] - xdata) * scale_factor]
+        new_ylim = [ydata - (ydata - ylim[0]) * scale_factor,
+                    ydata + (ylim[1] - ydata) * scale_factor]
+
+        ax.set_xlim(new_xlim)
+        ax.set_ylim(new_ylim)
+        canvas.draw_idle()
+
+    def on_press(event):
+        if event.inaxes != ax or event.dblclick:
+            return
+        
+        # Avoid panning when a standard toolbar zoom/pan tool is active
+        tb = fig.canvas.manager.toolbar if hasattr(fig.canvas, 'manager') and fig.canvas.manager else None
+        if tb and tb.mode != '':
+            return
+
+        if event.button in [1, 3]: # Left-click or Right-click
+            state['press'] = event.x, event.y
+            state['xlim'] = ax.get_xlim()
+            state['ylim'] = ax.get_ylim()
+
+    def on_release(event):
+        state['press'] = None
+        canvas.draw_idle()
+
+    def on_motion(event):
+        if state['press'] is None or event.inaxes != ax:
+            return
+        tb = fig.canvas.manager.toolbar if hasattr(fig.canvas, 'manager') and fig.canvas.manager else None
+        if tb and tb.mode != '':
+            return
+
+        dx = event.x - state['press'][0]
+        dy = event.y - state['press'][1]
+
+        # Convert to data coordinates
+        inv = ax.transData.inverted()
+        p0 = inv.transform((state['press'][0], state['press'][1]))
+        p1 = inv.transform((event.x, event.y))
+
+        d_data_x = p1[0] - p0[0]
+        d_data_y = p1[1] - p0[1]
+
+        ax.set_xlim(state['xlim'][0] - d_data_x, state['xlim'][1] - d_data_x)
+        ax.set_ylim(state['ylim'][0] - d_data_y, state['ylim'][1] - d_data_y)
+        canvas.draw_idle()
+
+    def on_click(event):
+        if event.inaxes != ax:
+            return
+        if event.dblclick:
+            if hasattr(ax, "cluster_limits") and hasattr(ax, "default_limits"):
+                lims = ax.cluster_limits
+                cur_xlim = ax.get_xlim()
+                cur_w = cur_xlim[1] - cur_xlim[0]
+                cln_w = lims[1] - lims[0]
+                
+                # Switch between cluster limits and default limits on double click
+                if abs(cur_w - cln_w) / cln_w < 0.15:
+                    lims = ax.default_limits
+                else:
+                    lims = ax.cluster_limits
+                    
+                ax.set_xlim(lims[0], lims[1])
+                ax.set_ylim(lims[2], lims[3])
+                canvas.draw_idle()
+
+    canvas.mpl_connect('scroll_event', on_scroll)
+    canvas.mpl_connect('button_press_event', on_press)
+    canvas.mpl_connect('button_release_event', on_release)
+    canvas.mpl_connect('motion_notify_event', on_motion)
+    canvas.mpl_connect('button_press_event', on_click)
 
 def make_plot(raw, clean, result, last_iter, sld99=None):
     """Generate high-quality geodetic scatter plot and Gaussian error distribution graphs."""
@@ -97,6 +197,32 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_sc.set_title("Position Scatter — Gaussian Filtered",
                     color=TEXT, fontsize=12, fontweight="bold", pad=10)
     ax_sc.grid(True, color=BORDER, linewidth=0.6, zorder=1)
+    # Calculate limits for cluster zoom, default zoom, and all data zoom
+    min_cln_x, max_cln_x = cln_dx.min(), cln_dx.max()
+    min_cln_y, max_cln_y = cln_dy.min(), cln_dy.max()
+    w_cln = max_cln_x - min_cln_x
+    h_cln = max_cln_y - min_cln_y
+    w_cln = max(w_cln, 1e-4)
+    h_cln = max(h_cln, 1e-4)
+    ax_sc.cluster_limits = (min_cln_x - 0.1 * w_cln, max_cln_x + 0.1 * w_cln,
+                            min_cln_y - 0.1 * h_cln, max_cln_y + 0.1 * h_cln)
+
+    std_x = max(result["X_std"] * 3600, 1e-4)
+    std_y = max(result["Y_std"] * 3600, 1e-4)
+    ax_sc.default_limits = (res_dx - 4 * std_x, res_dx + 4 * std_x,
+                            res_dy - 4 * std_y, res_dy + 4 * std_y)
+
+    min_raw_x, max_raw_x = raw_dx.min(), raw_dx.max()
+    min_raw_y, max_raw_y = raw_dy.min(), raw_dy.max()
+    w_raw = max_raw_x - min_raw_x
+    h_raw = max_raw_y - min_raw_y
+    w_raw = max(w_raw, 1e-4)
+    h_raw = max(h_raw, 1e-4)
+    ax_sc.all_limits = (min_raw_x - 0.05 * w_raw, max_raw_x + 0.05 * w_raw,
+                        min_raw_y - 0.05 * h_raw, max_raw_y + 0.05 * h_raw)
+
+    ax_sc.set_xlim(ax_sc.default_limits[0], ax_sc.default_limits[1])
+    ax_sc.set_ylim(ax_sc.default_limits[2], ax_sc.default_limits[3])
     ax_sc.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
                  fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
 
@@ -283,6 +409,13 @@ class App(tk.Tk):
 
         self.plot_frame = tk.Frame(self.nb, bg=DARK)
         self.nb.add(self.plot_frame, text="  Scatter + Gaussian Plot  ")
+
+        # Controls panel at the top (stays fixed, does not scroll)
+        self.plot_ctrl = tk.Frame(self.plot_frame, bg=PANEL, padx=10, pady=6)
+        self.plot_ctrl.pack(side="top", fill="x")
+        self.lbl_ctrl_placeholder = tk.Label(self.plot_ctrl, text="Plot controls will appear here after running analysis",
+                                             bg=PANEL, fg=MUTED, font=("Courier New", 9, "italic"))
+        self.lbl_ctrl_placeholder.pack(side="left", pady=2)
 
         # Scrollable container for plots
         self.plot_canvas = tk.Canvas(self.plot_frame, bg=DARK, highlightthickness=0)
@@ -649,7 +782,64 @@ class App(tk.Tk):
             w.destroy()
         fig = make_plot(self.raw_df, self.clean_df,
                         self.result, self.iters[-1], self.sld99_res)
+        
+        ax_sc = fig.axes[0]
+        enable_interactive_zoom_pan(ax_sc)
+
         canvas = FigureCanvasTkAgg(fig, master=self.plot_inner)
         canvas.draw()
+        
+        # Clear control panel placeholder and populate control elements
+        for w in self.plot_ctrl.winfo_children():
+            w.destroy()
+
+        # Add interactive zoom/pan toolbar at the top (left-side of control panel)
+        toolbar = NavigationToolbar2Tk(canvas, self.plot_ctrl, pack_toolbar=False)
+        toolbar.update()
+        toolbar.pack(side="left", fill="y", padx=5)
+
+        # Separator inside control panel
+        sep = tk.Frame(self.plot_ctrl, bg=BORDER, width=2)
+        sep.pack(side="left", fill="y", padx=15)
+
+        # Quick Zoom Frame inside control panel
+        zoom_frame = tk.Frame(self.plot_ctrl, bg=PANEL)
+        zoom_frame.pack(side="left", fill="y")
+
+        tk.Label(zoom_frame, text="Quick Zoom:", bg=PANEL, fg=MUTED,
+                 font=("Courier New", 9, "bold")).pack(side="left", padx=(0, 6), pady=5)
+
+        def zoom_to_cluster():
+            if hasattr(ax_sc, "cluster_limits"):
+                lims = ax_sc.cluster_limits
+                ax_sc.set_xlim(lims[0], lims[1])
+                ax_sc.set_ylim(lims[2], lims[3])
+                canvas.draw_idle()
+
+        def zoom_to_default():
+            if hasattr(ax_sc, "default_limits"):
+                lims = ax_sc.default_limits
+                ax_sc.set_xlim(lims[0], lims[1])
+                ax_sc.set_ylim(lims[2], lims[3])
+                canvas.draw_idle()
+
+        def zoom_to_all():
+            if hasattr(ax_sc, "all_limits"):
+                lims = ax_sc.all_limits
+                ax_sc.set_xlim(lims[0], lims[1])
+                ax_sc.set_ylim(lims[2], lims[3])
+                canvas.draw_idle()
+
+        def make_zoom_btn(text, cmd, color):
+            btn = tk.Button(zoom_frame, text=text, command=cmd, bg=color, fg=DARK,
+                            font=("Courier New", 9, "bold"), relief="flat", padx=10, pady=2,
+                            cursor="hand2", activebackground=BLUE, activeforeground=DARK)
+            btn.pack(side="left", padx=4, pady=2)
+            return btn
+
+        make_zoom_btn("Cluster (Clean)", zoom_to_cluster, GREEN)
+        make_zoom_btn("Default (4\u03c3)", zoom_to_default, BLUE)
+        make_zoom_btn("All Epochs (Raw)", zoom_to_all, AMBER)
+
         canvas.get_tk_widget().pack(fill="both", expand=True)
         self.nb.select(3)
