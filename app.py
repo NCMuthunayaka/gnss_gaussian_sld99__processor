@@ -53,9 +53,9 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         2, 3,
         width_ratios=[2.4, 1.1, 1.1],
         height_ratios=[1, 1],
-        hspace=0.48, wspace=0.32,
+        hspace=0.55, wspace=0.32,
         left=0.06, right=0.97,
-        top=0.92,  bottom=0.09)
+        top=0.86,  bottom=0.09)
 
     ax_sc  = fig.add_subplot(gs[:, 0])
     ax_hx  = fig.add_subplot(gs[0, 1])
@@ -126,10 +126,11 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
                          edgecolor=BLUE, alpha=0.92))
 
     for ax_h, col, colour, label in [
-        (ax_hx, "X", BLUE, "Longitude (\u03bb)  (\u00b0)"),
-        (ax_hy, "Y", GREEN, "Latitude  (\u03c6)  (\u00b0)"),
+        (ax_hx, "X", BLUE, "Longitude (\u03bb) deviation (arc-sec)"),
+        (ax_hy, "Y", GREEN, "Latitude  (\u03c6) deviation (arc-sec)"),
     ]:
-        data = clean[col].values
+        centre = clean[col].mean()
+        data = (clean[col].values - centre) * 3600.0
         mu_f, sig_f = norm_fit(data)
         xr = np.linspace(data.min(), data.max(), 400)
         ax_h.hist(data, bins=40, density=True,
@@ -137,7 +138,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
                   edgecolor=PANEL, linewidth=0.3, zorder=2)
         ax_h.plot(xr, norm_pdf(xr, mu_f, sig_f),
                   color=colour, linewidth=2.0, zorder=3,
-                  label=f"\u03bc={mu_f:.6f}\n\u03c3={sig_f:.7f}")
+                  label=f"\u03bc={mu_f:.4f}\"\n\u03c3={sig_f:.4f}\"")
         for mult, lc, ls in [(0.6745, MUTED, ":"),
                              (1.9600, AMBER, "--"),
                              (2.9680, RED, "-")]:
@@ -194,7 +195,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
                             fontsize=6, color=TEXT)
 
     fig.suptitle("GNSS Gaussian E-Threshold Analysis  \u00b7  SLD99 Transform  [EPSG:5235]",
-                 color=TEXT, fontsize=13, fontweight="bold", y=0.975)
+                 color=TEXT, fontsize=13, fontweight="bold", y=0.95)
     return fig
 
 class App(tk.Tk):
