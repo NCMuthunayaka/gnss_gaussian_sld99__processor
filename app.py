@@ -183,18 +183,17 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     res_dx  = to_as(result["X"], cx)
     res_dy  = to_as(result["Y"], cy)
 
-    ax_sc.scatter(raw_dx, raw_dy, s=8, alpha=0.18, color=BLUE, zorder=2,
-                  label=f"All epochs ({len(raw)})")
-    ax_sc.scatter(cln_dx, cln_dy, s=14, alpha=0.70, color=GREEN, zorder=3,
-                  label=f"Clean epochs ({len(clean)})")
-    ax_sc.scatter(res_dx, res_dy, s=90, color=RED, marker="*", zorder=5,
-                  label="Weighted mean")
-    ax_sc.scatter(res_dx, res_dy, s=8, color="white", marker="o", zorder=6)
-    ax_sc.add_patch(Ellipse(
+    h_raw = ax_sc.scatter(raw_dx, raw_dy, s=8, alpha=0.18, color=BLUE, zorder=2)
+    h_cln = ax_sc.scatter(cln_dx, cln_dy, s=14, alpha=0.70, color=GREEN, zorder=3)
+    h_star = ax_sc.scatter(res_dx, res_dy, s=90, color=RED, marker="*", zorder=5)
+    h_dot = ax_sc.scatter(res_dx, res_dy, s=8, color="white", marker="o", zorder=6)
+    
+    ellipse = Ellipse(
         xy=(res_dx, res_dy),
         width=4 * result["X_std"] * 3600, height=4 * result["Y_std"] * 3600,
         edgecolor=AMBER, facecolor="none",
-        linewidth=1.6, linestyle="--", label="2\u03c3 ellipse", zorder=4))
+        linewidth=1.6, linestyle="--", zorder=4)
+    h_ellipse = ax_sc.add_patch(ellipse)
 
     ax_sc.set_xlabel("\u0394\u03bb  (arc-sec from cluster centre)", color=MUTED, fontsize=10)
     ax_sc.set_ylabel("\u0394\u03c6  (arc-sec from cluster centre)", color=MUTED, fontsize=10)
@@ -227,8 +226,13 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
 
     ax_sc.set_xlim(ax_sc.default_limits[0], ax_sc.default_limits[1])
     ax_sc.set_ylim(ax_sc.default_limits[2], ax_sc.default_limits[3])
-    ax_sc.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                 fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
+    import matplotlib.legend_handler as handler
+    ax_sc.legend(
+        handles=[h_raw, h_cln, (h_star, h_dot), h_ellipse],
+        labels=[f"All epochs ({len(raw)})", f"Clean epochs ({len(clean)})", "Weighted mean", "2\u03c3 ellipse"],
+        handler_map={tuple: handler.HandlerTuple(ndivide=None)},
+        loc="upper left", bbox_to_anchor=(1.02, 1.0),
+        fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
 
 
     for ax_h, col, colour, label in [
