@@ -144,6 +144,10 @@ def enable_interactive_zoom_pan(ax):
     canvas.mpl_connect('motion_notify_event', on_motion)
     canvas.mpl_connect('button_press_event', on_click)
 
+class CustomNavigationToolbar(NavigationToolbar2Tk):
+    """Custom navigation toolbar that filters out the subplot configuration tool."""
+    toolitems = [t for t in NavigationToolbar2Tk.toolitems if t[0] != 'Subplots']
+
 def make_plot(raw, clean, result, last_iter, sld99=None):
     """Generate high-quality geodetic scatter plot and Gaussian error distribution graphs."""
     fig = plt.figure(figsize=(10, 22))
@@ -794,7 +798,7 @@ class App(tk.Tk):
             w.destroy()
 
         # Add interactive zoom/pan toolbar at the top (left-side of control panel)
-        toolbar = NavigationToolbar2Tk(canvas, self.plot_ctrl, pack_toolbar=False)
+        toolbar = CustomNavigationToolbar(canvas, self.plot_ctrl, pack_toolbar=False)
         toolbar.update()
         toolbar.pack(side="left", fill="y", padx=5)
 
