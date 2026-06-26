@@ -53,9 +53,9 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         2, 3,
         width_ratios=[2.4, 1.1, 1.1],
         height_ratios=[1, 1],
-        hspace=0.65, wspace=0.45,
+        hspace=0.48, wspace=0.32,
         left=0.06, right=0.97,
-        top=0.85,  bottom=0.16)
+        top=0.88,  bottom=0.09)
 
     ax_sc  = fig.add_subplot(gs[:, 0])
     ax_hx  = fig.add_subplot(gs[0, 1])
@@ -99,8 +99,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_sc.set_title("Position Scatter — Gaussian Filtered",
                     color=TEXT, fontsize=12, fontweight="bold", pad=10)
     ax_sc.grid(True, color=BORDER, linewidth=0.6, zorder=1)
-    ax_sc.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=4,
-                 fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
+    ax_sc.legend(loc="upper right", fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
 
 
     for ax_h, col, colour, label in [
@@ -136,8 +135,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         ax_h.set_xlabel(label, color=MUTED, fontsize=8)
         ax_h.set_ylabel("Density", color=MUTED, fontsize=8)
         ax_h.grid(True, color=BORDER, linewidth=0.5, zorder=1)
-        ax_h.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                    fontsize=7, facecolor=DARK, edgecolor=BORDER,
+        ax_h.legend(loc="upper right", fontsize=7, facecolor=DARK, edgecolor=BORDER,
                     labelcolor=TEXT, framealpha=0.9)
 
     n_clean = len(clean)
@@ -162,8 +160,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_bar.set_title("Sigma Zone Distribution",
                      color=TEXT, fontsize=9, fontweight="bold", pad=5)
     ax_bar.grid(True, axis="y", color=BORDER, linewidth=0.5, zorder=1)
-    ax_bar.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=3,
-                  fontsize=7, facecolor=DARK, edgecolor=BORDER,
+    ax_bar.legend(loc="upper right", fontsize=7, facecolor=DARK, edgecolor=BORDER,
                   labelcolor=TEXT, framealpha=0.9)
     for bars in (bx, by, be):
         for bar in bars:
