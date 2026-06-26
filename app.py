@@ -153,7 +153,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         4, 1,
         hspace=0.45,
         left=0.08, right=0.78,
-        top=0.96,  bottom=0.02)
+        top=0.93,  bottom=0.02)
 
     ax_sc  = fig.add_subplot(gs[0])
     ax_hx  = fig.add_subplot(gs[1])
@@ -299,7 +299,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
 
 
     fig.suptitle("GNSS Gaussian E-Threshold Analysis  \u00b7  SLD99 Transform  [EPSG:5235]",
-                 color=TEXT, fontsize=13, fontweight="bold", y=0.98)
+                 color=TEXT, fontsize=13, fontweight="bold", y=0.97)
     return fig
 
 class App(tk.Tk):
