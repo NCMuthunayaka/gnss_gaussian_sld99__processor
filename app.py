@@ -235,12 +235,12 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     # Calculate limits for cluster zoom, default zoom, and all data zoom
     min_cln_x, max_cln_x = cln_dx.min(), cln_dx.max()
     min_cln_y, max_cln_y = cln_dy.min(), cln_dy.max()
-    w_cln = max_cln_x - min_cln_x
-    h_cln = max_cln_y - min_cln_y
-    w_cln = max(w_cln, 1e-4)
-    h_cln = max(h_cln, 1e-4)
-    ax_sc.cluster_limits = (min_cln_x - 0.1 * w_cln, max_cln_x + 0.1 * w_cln,
-                            min_cln_y - 0.1 * h_cln, max_cln_y + 0.1 * h_cln)
+    cln_w = max_cln_x - min_cln_x
+    cln_h = max_cln_y - min_cln_y
+    cln_w = max(cln_w, 1e-4)
+    cln_h = max(cln_h, 1e-4)
+    ax_sc.cluster_limits = (min_cln_x - 0.1 * cln_w, max_cln_x + 0.1 * cln_w,
+                            min_cln_y - 0.1 * cln_h, max_cln_y + 0.1 * cln_h)
 
     std_x = max(result["X_std"] * 3600, 1e-4)
     std_y = max(result["Y_std"] * 3600, 1e-4)
@@ -249,12 +249,12 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
 
     min_raw_x, max_raw_x = raw_dx.min(), raw_dx.max()
     min_raw_y, max_raw_y = raw_dy.min(), raw_dy.max()
-    w_raw = max_raw_x - min_raw_x
-    h_raw = max_raw_y - min_raw_y
-    w_raw = max(w_raw, 1e-4)
-    h_raw = max(h_raw, 1e-4)
-    ax_sc.all_limits = (min_raw_x - 0.05 * w_raw, max_raw_x + 0.05 * w_raw,
-                        min_raw_y - 0.05 * h_raw, max_raw_y + 0.05 * h_raw)
+    raw_w = max_raw_x - min_raw_x
+    raw_h = max_raw_y - min_raw_y
+    raw_w = max(raw_w, 1e-4)
+    raw_h = max(raw_h, 1e-4)
+    ax_sc.all_limits = (min_raw_x - 0.05 * raw_w, max_raw_x + 0.05 * raw_w,
+                        min_raw_y - 0.05 * raw_h, max_raw_y + 0.05 * raw_h)
 
     ax_sc.set_xlim(ax_sc.default_limits[0], ax_sc.default_limits[1])
     ax_sc.set_ylim(ax_sc.default_limits[2], ax_sc.default_limits[3])
