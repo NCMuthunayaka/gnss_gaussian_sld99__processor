@@ -259,12 +259,20 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_sc.set_xlim(ax_sc.default_limits[0], ax_sc.default_limits[1])
     ax_sc.set_ylim(ax_sc.default_limits[2], ax_sc.default_limits[3])
     import matplotlib.legend_handler as handler
-    ax_sc.legend(
+    leg = ax_sc.legend(
         handles=[h_raw, h_cln, (h_star, h_dot), h_ellipse],
         labels=[f"All epochs ({len(raw)})", f"Clean epochs ({len(clean)})", "Weighted mean", "2\u03c3 ellipse"],
         handler_map={tuple: handler.HandlerTuple(ndivide=None)},
         loc="upper left", bbox_to_anchor=(1.02, 1.0),
         fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
+
+    # Override legend markers to make them solid and larger for readability
+    leg_handles = leg.legend_handles if hasattr(leg, "legend_handles") else leg.legendHandles
+    for lh in leg_handles:
+        if hasattr(lh, "set_alpha"):
+            lh.set_alpha(1.0)
+        if hasattr(lh, "set_sizes"):
+            lh.set_sizes([40.0])
 
 
     for ax_h, col, colour, label in [
