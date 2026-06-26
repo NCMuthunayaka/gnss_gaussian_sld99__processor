@@ -44,8 +44,8 @@ def _dms(deg):
     sign = "-" if deg < 0 else ""
     return f"{sign}{d}\u00b0{m:02d}'{s:06.3f}\""
 
-def enable_interactive_zoom_pan(ax):
-    """Enables scroll wheel zoom, click-drag panning, and double-click zoom toggle on a Matplotlib Axes."""
+def enable_interactive_zoom_pan(ax, scroll_canvas):
+    """Enables scroll wheel zoom on ax, and scrolls scroll_canvas otherwise."""
     fig = ax.get_figure()
     canvas = fig.canvas
 
@@ -56,27 +56,34 @@ def enable_interactive_zoom_pan(ax):
     }
 
     def on_scroll(event):
-        if event.inaxes != ax:
-            return
-        xdata = event.xdata
-        ydata = event.ydata
-        if xdata is None or ydata is None:
-            return
+        if event.inaxes == ax:
+            xdata = event.xdata
+            ydata = event.ydata
+            if xdata is None or ydata is None:
+                return
 
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
 
-        # Zoom factor: zoom in with up scroll, out with down scroll
-        scale_factor = 0.82 if event.button == 'up' else 1.22
+            # Zoom factor: zoom in with up scroll, out with down scroll
+            scale_factor = 0.82 if event.button == 'up' else 1.22
 
-        new_xlim = [xdata - (xdata - xlim[0]) * scale_factor,
-                    xdata + (xlim[1] - xdata) * scale_factor]
-        new_ylim = [ydata - (ydata - ylim[0]) * scale_factor,
-                    ydata + (ylim[1] - ydata) * scale_factor]
+            new_xlim = [xdata - (xdata - xlim[0]) * scale_factor,
+                        xdata + (xlim[1] - xdata) * scale_factor]
+            new_ylim = [ydata - (ydata - ylim[0]) * scale_factor,
+                        ydata + (ylim[1] - ydata) * scale_factor]
 
-        ax.set_xlim(new_xlim)
-        ax.set_ylim(new_ylim)
-        canvas.draw_idle()
+            ax.set_xlim(new_xlim)
+            ax.set_ylim(new_ylim)
+            canvas.draw_idle()
+        else:
+            # Scroll parent canvas vertically
+            if event.step:
+                scroll_canvas.yview_scroll(int(-3 * event.step), "units")
+            elif event.button == 'up':
+                scroll_canvas.yview_scroll(-3, "units")
+            elif event.button == 'down':
+                scroll_canvas.yview_scroll(3, "units")
 
     def on_press(event):
         if event.inaxes != ax or event.dblclick:
@@ -143,6 +150,31 @@ def enable_interactive_zoom_pan(ax):
     canvas.mpl_connect('button_release_event', on_release)
     canvas.mpl_connect('motion_notify_event', on_motion)
     canvas.mpl_connect('button_press_event', on_click)
+
+def bind_scroll_wheel(canvas):
+    """Binds mouse wheel and touchpad scroll events to a Tkinter Canvas when hovered."""
+    def _on_mousewheel(event):
+        if event.delta:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+    def _on_linux_scroll_up(event):
+        canvas.yview_scroll(-1, "units")
+        
+    def _on_linux_scroll_down(event):
+        canvas.yview_scroll(1, "units")
+
+    def _on_enter(event):
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas.bind_all("<Button-4>", _on_linux_scroll_up)
+        canvas.bind_all("<Button-5>", _on_linux_scroll_down)
+
+    def _on_leave(event):
+        canvas.unbind_all("<MouseWheel>")
+        canvas.unbind_all("<Button-4>")
+        canvas.unbind_all("<Button-5>")
+
+    canvas.bind("<Enter>", _on_enter)
+    canvas.bind("<Leave>", _on_leave)
 
 class CustomNavigationToolbar(NavigationToolbar2Tk):
     """Custom navigation toolbar that filters out the subplot configuration tool."""
@@ -432,6 +464,7 @@ class App(tk.Tk):
         self.plot_canvas.configure(yscrollcommand=self.plot_vsb.set)
         self.plot_vsb.pack(side="right", fill="y")
         self.plot_canvas.pack(side="left", fill="both", expand=True)
+        bind_scroll_wheel(self.plot_canvas)
 
         self.plot_inner = tk.Frame(self.plot_canvas, bg=DARK)
         self.plot_canvas_id = self.plot_canvas.create_window((0, 0), window=self.plot_inner,
@@ -461,6 +494,7 @@ class App(tk.Tk):
         canvas.configure(yscrollcommand=vsb.set)
         vsb.pack(side="right", fill="y")
         canvas.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=(0, 12))
+        bind_scroll_wheel(canvas)
 
         self._sld_canvas = canvas
         self._sld_inner = tk.Frame(canvas, bg=DARK)
@@ -792,7 +826,7 @@ class App(tk.Tk):
                         self.result, self.iters[-1], self.sld99_res)
         
         ax_sc = fig.axes[0]
-        enable_interactive_zoom_pan(ax_sc)
+        enable_interactive_zoom_pan(ax_sc, self.plot_canvas)
 
         canvas = FigureCanvasTkAgg(fig, master=self.plot_inner)
         canvas.draw()
