@@ -101,29 +101,6 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_sc.legend(fontsize=8, loc="upper right",
                  facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
 
-    lon = result["Lon"]
-    lat = result["Lat"]
-    info_lines = (
-        f"Latitude  : {lat:.8f}\u00b0\n"
-        f"            {_dms(lat)} N\n"
-        f"Longitude : {lon:.8f}\u00b0\n"
-        f"            {_dms(lon)} E\n"
-        f"Height    : {result['Height']:.3f} m\n"
-        f"S\u0304\u03c6      : {result['S_mean_lat']*3600*1000:.3f} mas\n"
-        f"S\u0304\u03bb      : {result['S_mean_lon']*3600*1000:.3f} mas\n"
-        f"PDOP    : {result['PDOP_mean']:.3f}"
-    )
-    if sld99:
-        info_lines += (
-            f"\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-            f"SLD99 E : {sld99['SLD99_E']:.3f} m\n"
-            f"SLD99 N : {sld99['SLD99_N']:.3f} m"
-        )
-    ax_sc.text(0.02, 0.97, info_lines,
-               transform=ax_sc.transAxes,
-               fontsize=7.5, va="top", family="monospace", color=TEXT,
-               bbox=dict(boxstyle="round,pad=0.5", facecolor="#0f2744",
-                         edgecolor=BLUE, alpha=0.92))
 
     for ax_h, col, colour, label in [
         (ax_hx, "X", BLUE, "Longitude (\u03bb) deviation (arc-sec)"),
