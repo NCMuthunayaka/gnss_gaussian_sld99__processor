@@ -376,7 +376,7 @@ class App(tk.Tk):
         tk.Label(sb, text="Gaussian + SLD99",
                  bg=PANEL, fg=MUTED,
                  font=("Courier New", 10)).pack(anchor="w", pady=(0, 2))
-        tk.Label(sb, text="Ghilani \u00a73.6  Iterative\nBlunder Rejection",
+        tk.Label(sb, text="Ghilani \u00a73.6  Iterative\nOutlier Rejection",
                  bg=PANEL, fg=VIOLET,
                  font=("Courier New", 9, "italic")).pack(anchor="w")
 
