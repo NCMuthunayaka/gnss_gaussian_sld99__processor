@@ -54,7 +54,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         width_ratios=[2.4, 1.1, 1.1],
         height_ratios=[1, 1],
         hspace=0.65, wspace=0.45,
-        left=0.14, right=0.97,
+        left=0.06, right=0.97,
         top=0.85,  bottom=0.16)
 
     ax_sc  = fig.add_subplot(gs[:, 0])
@@ -173,28 +173,6 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
                             f"{int(round(h))}", ha="center", va="bottom",
                             fontsize=6, color=TEXT)
 
-    lon = result["Lon"]
-    lat = result["Lat"]
-    info_lines = (
-        f"Latitude  : {lat:.8f}\u00b0\n"
-        f"            {_dms(lat)} N\n"
-        f"Longitude : {lon:.8f}\u00b0\n"
-        f"            {_dms(lon)} E\n"
-        f"Height    : {result['Height']:.3f} m\n"
-        f"S\u0304\u03c6      : {result['S_mean_lat']*3600*1000:.3f} mas\n"
-        f"S\u0304\u03bb      : {result['S_mean_lon']*3600*1000:.3f} mas\n"
-        f"PDOP    : {result['PDOP_mean']:.3f}"
-    )
-    if sld99:
-        info_lines += (
-            f"\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-            f"SLD99 E : {sld99['SLD99_E']:.3f} m\n"
-            f"SLD99 N : {sld99['SLD99_N']:.3f} m"
-        )
-    fig.text(0.01, 0.48, info_lines,
-             fontsize=7.5, va="center", family="monospace", color=TEXT,
-             bbox=dict(boxstyle="round,pad=0.5", facecolor="#0f2744",
-                       edgecolor=BLUE, alpha=0.92))
 
     fig.suptitle("GNSS Gaussian E-Threshold Analysis  \u00b7  SLD99 Transform  [EPSG:5235]",
                  color=TEXT, fontsize=13, fontweight="bold", y=0.94)
