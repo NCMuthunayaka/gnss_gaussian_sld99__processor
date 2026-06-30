@@ -18,10 +18,15 @@ class SLD99Transformer:
     _EVE_a   = 6_377_276.345
     _EVE_f   = 1.0 / 300.8017
 
-    # Helmert 3-parameter translation shifts: WGS84 -> Everest 1830 (1937 Adjustment)
-    _dX = +100.7
-    _dY = -784.8
-    _dZ = -86.2
+    # Official EPSG:5236 Bursa-Wolf (Position Vector) parameters (SLD99 -> WGS84)
+    # We apply the inverse transformation for WGS84 -> SLD99
+    _dX = -0.293
+    _dY = 766.95
+    _dZ = 87.713
+    _rx = math.radians(-0.195704 / 3600.0)
+    _ry = math.radians(-1.695068 / 3600.0)
+    _rz = math.radians(-3.473016 / 3600.0)
+    _ds = -0.039338 * 1e-6
 
     # Natural Origin parameters
     _phi0 = math.radians(7 + 1.698 / 3600)         # 7°00'01.698" N
@@ -67,8 +72,13 @@ class SLD99Transformer:
         return phi, lam, h
 
     @classmethod
-    def _helmert_shift(cls, X, Y, Z):
-        return X + cls._dX, Y + cls._dY, Z + cls._dZ
+    def _helmert_7p_shift(cls, Xw, Yw, Zw):
+        # Position Vector (Bursa-Wolf) inverse transformation (WGS84 -> SLD99)
+        M = 1.0 - cls._ds
+        Xe = -cls._dX + M * (Xw - cls._rz * Yw + cls._ry * Zw)
+        Ye = -cls._dY + M * (cls._rz * Xw + Yw - cls._rx * Zw)
+        Ze = -cls._dZ + M * (-cls._ry * Xw + cls._rx * Yw + Zw)
+        return Xe, Ye, Ze
 
     @classmethod
     def _tm_forward(cls, phi, lam, a, e2):
@@ -127,7 +137,7 @@ class SLD99Transformer:
         b_w, e2_w, _ = cls._ellipsoid_params(cls._WGS84_a, cls._WGS84_f)
         b_e, e2_e, _ = cls._ellipsoid_params(cls._EVE_a, cls._EVE_f)
         Xw, Yw, Zw = cls._geo_to_xyz(phi_w, lam_w, h_wgs84, cls._WGS84_a, e2_w)
-        Xe, Ye, Ze = cls._helmert_shift(Xw, Yw, Zw)
+        Xe, Ye, Ze = cls._helmert_7p_shift(Xw, Yw, Zw)
         phi_e, lam_e, h_e = cls._xyz_to_geo(Xe, Ye, Ze, cls._EVE_a, e2_e)
         E, N = cls._tm_forward(phi_e, lam_e, cls._EVE_a, e2_e)
         return {
