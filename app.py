@@ -548,7 +548,7 @@ class App(tk.Tk):
             return
         try:
             self._log("\u2501\u2501 Step 1: Parsing OUTPUT lines \u2501\u2501\n", "hd")
-            self._log("   Reading: col[10]=PDOP  col[20]=Lat  col[21]=Lon  col[22]=H\n", "info")
+            self._log("   Reading: PDOP (dynamic)  col[20]=Lat  col[21]=Lon  col[22]=H\n", "info")
             self.raw_df = parse_out_file(self.filepath)
             self._log(f"   {len(self.raw_df)} epochs parsed\n", "ok")
             sample = self.raw_df.iloc[0]
