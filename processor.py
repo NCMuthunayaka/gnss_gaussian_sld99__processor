@@ -14,6 +14,7 @@ def parse_out_file(filepath):
     """
     Parse a gLAB .out file to extract epochs from lines starting with 'OUTPUT'.
     Expected index mapping:
+      parts[36]: PDOP
       parts[20]: Latitude (WGS84)
       parts[21]: Longitude (WGS84)
       parts[22]: Height (Ellipsoidal)
@@ -24,23 +25,11 @@ def parse_out_file(filepath):
             if not line.startswith("OUTPUT"):
                 continue
             parts = line.split()
-            if len(parts) < 23:
+            if len(parts) < 37:
                 continue
             try:
-                # Dynamically locate reference constellation from the end
-                ref_idx = -1
-                for idx in range(len(parts) - 1, 22, -1):
-                    try:
-                        float(parts[idx])
-                    except ValueError:
-                        ref_idx = idx
-                        break
-                
-                # Extract correct PDOP (at index ref_idx + 4) or fallback to parts[10]
-                pdop_val = float(parts[ref_idx + 4]) if (ref_idx != -1 and ref_idx + 4 < len(parts)) else float(parts[10])
-
                 records.append({
-                    "PDOP":   pdop_val,
+                    "PDOP":   float(parts[36]),
                     "Lat":    float(parts[20]),
                     "Lon":    float(parts[21]),
                     "Height": float(parts[22]),
@@ -53,7 +42,7 @@ def parse_out_file(filepath):
     if not records:
         raise ValueError(
             "No valid OUTPUT lines with Lat/Lon columns found in this file.\n"
-            "Expected at least 23 whitespace-separated fields per OUTPUT line.")
+            "Expected at least 37 whitespace-separated fields per OUTPUT line.")
     return pd.DataFrame(records)
 
 def gaussian_iterative_rejection(df, log_cb=None):
@@ -135,7 +124,7 @@ def weighted_mean(df):
     n = len(df)
     sx = float(df["X"].std(ddof=1))
     sy = float(df["Y"].std(ddof=1))
-    mean_h = float(df["Height"].mean()) if "Height" in df.columns else 0.0
+    mean_h = float((df["Height"] * weights).sum() / total) if "Height" in df.columns else 0.0
     return {
         "Lon":       float((df["X"] * weights).sum() / total),
         "Lat":       float((df["Y"] * weights).sum() / total),

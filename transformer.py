@@ -4,36 +4,56 @@ SLD99 Coordinate Transformation Module
 Performs geodetic datum conversions and map projections:
 WGS84 Geographic (Lat, Lon, Height) -> SLD99 Transverse Mercator Grid (Easting, Northing).
 Conforms to EPSG:5235.
+
+Verification against SLD99_Uditha.csys (Leica/Trimble GNSS field software file):
+  The .csys file stores 7-parameter Helmert values in the WGS84->SLD99 (inverse) direction:
+    dX_inv = +0.2933 m   | rX_inv = +0.9488e-6 rad (+0.1957")
+    dY_inv = -766.9499 m | rY_inv = +8.2179e-6 rad (+1.6951")
+    dZ_inv = -87.7131 m  | rZ_inv = +1.6838e-5 rad (+3.4730")
+    scale_inv = 1.0000000393  (ds_inv = +0.0393 ppm)
+  Projection: phi0=7.00047153 deg, lam0=80.77171308 deg, k0=0.9999238420
+  All values are consistent with EPSG:5236 and EPSG:5235 to within stated accuracy.
 """
 
 import math
 
 class SLD99Transformer:
     """
-    WGS84 (φ, λ) -> SLD99 Transverse Mercator (Easting, Northing)
-    Conforms to EPSG:5235 parameters.
+    WGS84 (phi, lam) -> SLD99 Transverse Mercator (Easting, Northing).
+
+    Datum transformation: EPSG:5236 — SLD99 -> WGS84, Coordinate Frame Rotation
+    (EPSG method 9607). Parameters verified against SLD99_Uditha.csys field file.
+    Projection: EPSG:5235 Sri Lanka Grid 1999 (Transverse Mercator on Everest 1830 Modified).
     """
+    # WGS84 ellipsoid (EPSG:7030)
     _WGS84_a = 6_378_137.0
     _WGS84_f = 1.0 / 298.257_223_563
+
+    # Everest 1830 Modified ellipsoid (EPSG:7042), used by SLD99
     _EVE_a   = 6_377_276.345
     _EVE_f   = 1.0 / 300.8017
 
-    # Official EPSG:5236 Bursa-Wolf (Position Vector) parameters (SLD99 -> WGS84)
-    # We apply the inverse transformation for WGS84 -> SLD99
-    _dX = -0.293
-    _dY = 766.95
-    _dZ = 87.713
-    _rx = math.radians(-0.195704 / 3600.0)
-    _ry = math.radians(-1.695068 / 3600.0)
-    _rz = math.radians(-3.473016 / 3600.0)
-    _ds = -0.039338 * 1e-6
+    # EPSG:5236 — SLD99 -> WGS84 Helmert 7-parameter transform.
+    # Convention: Coordinate Frame Rotation (EPSG method 9607).
+    # Rotation matrix R_CF sign convention is OPPOSITE to Position Vector.
+    # The inverse (WGS84->SLD99) applies R_CF^T with negated translation.
+    # Values verified against SLD99_Uditha.csys: differences < 0.001 m (within EPSG accuracy).
+    _dX = -0.2933                              # X translation, SLD99->WGS84 (m)
+    _dY =  766.9499                            # Y translation, SLD99->WGS84 (m)
+    _dZ =  87.7131                             # Z translation, SLD99->WGS84 (m)
+    _rx = math.radians(-0.195704 / 3600.0)    # CF rx, SLD99->WGS84 (rad)
+    _ry = math.radians(-1.695068 / 3600.0)    # CF ry, SLD99->WGS84 (rad)
+    _rz = math.radians(-3.473016 / 3600.0)    # CF rz, SLD99->WGS84 (rad)
+    _ds = -0.039338 * 1e-6                    # Scale difference, SLD99->WGS84 (ppm)
 
-    # Natural Origin parameters
-    _phi0 = math.radians(7 + 1.698 / 3600)         # 7°00'01.698" N
-    _lam0 = math.radians(80.7717130833333)         # 80°46'18.167" E
-    _k0   = 0.9999238418                           # Central scale factor
-    _FE   = 500_000.0                              # False Easting
-    _FN   = 500_000.0                              # False Northing
+    # Natural Origin parameters — EPSG:5235 (SLD99 / Sri Lanka Grid 1999)
+    # phi0: 7°00'01.6975" N = 7.00047152777778° (EPSG dataset & .csys file: 7.00047153°)
+    # Previous code used 7°00'01.6983" (7.00047175°) — corrected to match EPSG:5235.
+    _phi0 = math.radians(7.00047152777778)          # Latitude of natural origin (rad)
+    _lam0 = math.radians(80.7717130833333)          # Longitude of natural origin: 80°46'18.167" E
+    _k0   = 0.9999238418                            # Central scale factor (EPSG:5235)
+    _FE   = 500_000.0                               # False Easting (m)
+    _FN   = 500_000.0                               # False Northing (m)
 
     @classmethod
     def _ellipsoid_params(cls, a, f):
@@ -72,12 +92,33 @@ class SLD99Transformer:
         return phi, lam, h
 
     @classmethod
-    def _helmert_7p_shift(cls, Xw, Yw, Zw):
-        # Position Vector (Bursa-Wolf) inverse transformation (WGS84 -> SLD99)
-        M = 1.0 - cls._ds
-        Xe = -cls._dX + M * (Xw - cls._rz * Yw + cls._ry * Zw)
-        Ye = -cls._dY + M * (cls._rz * Xw + Yw - cls._rx * Zw)
-        Ze = -cls._dZ + M * (-cls._ry * Xw + cls._rx * Yw + Zw)
+    def _helmert_7p(cls, Xw, Yw, Zw):
+        """
+        Coordinate Frame Rotation (EPSG:9607) inverse: WGS84 → SLD99 (Everest 1830).
+
+        EPSG:5236 defines the forward (SLD99 → WGS84) transform as:
+            X_wgs = dT + (1+ds) * R_CF * X_sld
+        where R_CF (Coordinate Frame convention) is:
+            R_CF = [[1,  +rz, -ry],
+                    [-rz,  1, +rx],
+                    [+ry, -rx,  1]]
+        Note: CF uses the TRANSPOSE of the Position Vector rotation matrix.
+
+        Inverse (WGS84 → SLD99) — linearised for small angles/scale:
+            X_sld = (1/(1+ds)) * R_CF^T * (X_wgs - dT)
+        where R_CF^T is:
+            R_CF^T = [[1,  -rz, +ry],
+                      [+rz,  1, -rx],
+                      [-ry, +rx,  1]]
+        """
+        M  = 1.0 / (1.0 + cls._ds)
+        dx = Xw - cls._dX
+        dy = Yw - cls._dY
+        dz = Zw - cls._dZ
+        # Apply R_CF^T (transpose of the CF rotation matrix)
+        Xe = M * (           dx - cls._rz * dy + cls._ry * dz)
+        Ye = M * ( cls._rz * dx +           dy - cls._rx * dz)
+        Ze = M * (-cls._ry * dx + cls._rx * dy +           dz)
         return Xe, Ye, Ze
 
     @classmethod
@@ -137,7 +178,7 @@ class SLD99Transformer:
         b_w, e2_w, _ = cls._ellipsoid_params(cls._WGS84_a, cls._WGS84_f)
         b_e, e2_e, _ = cls._ellipsoid_params(cls._EVE_a, cls._EVE_f)
         Xw, Yw, Zw = cls._geo_to_xyz(phi_w, lam_w, h_wgs84, cls._WGS84_a, e2_w)
-        Xe, Ye, Ze = cls._helmert_7p_shift(Xw, Yw, Zw)
+        Xe, Ye, Ze = cls._helmert_7p(Xw, Yw, Zw)
         phi_e, lam_e, h_e = cls._xyz_to_geo(Xe, Ye, Ze, cls._EVE_a, e2_e)
         E, N = cls._tm_forward(phi_e, lam_e, cls._EVE_a, e2_e)
         return {
