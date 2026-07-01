@@ -391,33 +391,6 @@ class App(tk.Tk):
         self._btn(sb, "  Browse .out file", self._browse, BTN_BG)
 
         self._sep(sb)
-        self._section(sb, "CALIBRATION & GEOID")
-
-        # Geoid N
-        row_n = tk.Frame(sb, bg=PANEL)
-        row_n.pack(fill="x", pady=2)
-        tk.Label(row_n, text="Geoid N (m):", bg=PANEL, fg=MUTED, font=("Courier New", 9)).pack(side="left")
-        self.ent_geoid = tk.Entry(row_n, bg="#0f172a", fg=TEXT, font=("Courier New", 9), insertbackground=TEXT, width=10, relief="flat", highlightthickness=1, highlightcolor=BLUE, highlightbackground=BORDER)
-        self.ent_geoid.pack(side="right")
-        self.ent_geoid.insert(0, "-98.0")
-
-        # Easting Shift
-        row_de = tk.Frame(sb, bg=PANEL)
-        row_de.pack(fill="x", pady=2)
-        tk.Label(row_de, text="Shift E (m):", bg=PANEL, fg=MUTED, font=("Courier New", 9)).pack(side="left")
-        self.ent_shift_e = tk.Entry(row_de, bg="#0f172a", fg=TEXT, font=("Courier New", 9), insertbackground=TEXT, width=10, relief="flat", highlightthickness=1, highlightcolor=BLUE, highlightbackground=BORDER)
-        self.ent_shift_e.pack(side="right")
-        self.ent_shift_e.insert(0, "0.0")
-
-        # Northing Shift
-        row_dn = tk.Frame(sb, bg=PANEL)
-        row_dn.pack(fill="x", pady=2)
-        tk.Label(row_dn, text="Shift N (m):", bg=PANEL, fg=MUTED, font=("Courier New", 9)).pack(side="left")
-        self.ent_shift_n = tk.Entry(row_dn, bg="#0f172a", fg=TEXT, font=("Courier New", 9), insertbackground=TEXT, width=10, relief="flat", highlightthickness=1, highlightcolor=BLUE, highlightbackground=BORDER)
-        self.ent_shift_n.pack(side="right")
-        self.ent_shift_n.insert(0, "0.0")
-
-        self._sep(sb)
         self._btn(sb, "  Run Full Analysis", self._run, "#16a34a",
                   font=("Courier New", 12, "bold"), pady=10)
 
@@ -574,21 +547,7 @@ class App(tk.Tk):
             messagebox.showwarning("No File", "Select a .out file first.")
             return
         try:
-            # Parse Geoid N and Calibration Grid Shifts
-            try:
-                self.geoid_n = float(self.ent_geoid.get().strip())
-            except ValueError:
-                self.geoid_n = 0.0
 
-            try:
-                self.shift_e = float(self.ent_shift_e.get().strip())
-            except ValueError:
-                self.shift_e = 0.0
-
-            try:
-                self.shift_n = float(self.ent_shift_n.get().strip())
-            except ValueError:
-                self.shift_n = 0.0
 
             self._log("\u2501\u2501 Step 1: Parsing OUTPUT lines \u2501\u2501\n", "hd")
             self._log("   Reading: col[36]=PDOP  col[20]=Lat  col[21]=Lon  col[22]=H\n", "info")
@@ -621,18 +580,10 @@ class App(tk.Tk):
             self.sld99_res = SLD99Transformer.transform(r["Lat"], r["Lon"], r["Height"])
             s = self.sld99_res
             
-            # Apply shifts and compute MSL height
-            s['SLD99_E'] += self.shift_e
-            s['SLD99_N'] += self.shift_n
-            s['msl_h'] = r["Height"] - self.geoid_n
-            
-            if self.shift_e != 0.0 or self.shift_n != 0.0:
-                self._log(f"   Calibration shifts applied: dE={self.shift_e:+.3f} m, dN={self.shift_n:+.3f} m\n", "info")
             self._log(f"   SLD99 Easting  = {s['SLD99_E']:.3f} m\n", "sld")
             self._log(f"   SLD99 Northing = {s['SLD99_N']:.3f} m\n", "sld")
             self._log(f"   Everest Lat    = {_dms(s['eve_lat_deg'])} N\n", "info")
             self._log(f"   Everest Lon    = {_dms(s['eve_lon_deg'])} E\n", "info")
-            self._log(f"   MSL Elevation  = {s['msl_h']:.3f} m (Geoid N = {self.geoid_n:.3f} m)\n", "ok")
             self._log("   Done \u2713\n", "ok")
 
             self._show_results()
@@ -663,8 +614,7 @@ class App(tk.Tk):
             ("lbl", "        "), ("lbl", f"{_dms(r['Lat'])} N\n"),
             ("lbl", "Lon (\u03bb): "), ("val", f"{r['Lon']:.8f}\u00b0\n"),
             ("lbl", "        "), ("lbl", f"{_dms(r['Lon'])} E\n"),
-            ("lbl", "H (Ellip): "), ("val", f"{r['Height']:.3f} m\n"),
-            ("lbl", "H (MSL)  : "), ("val", f"{s['msl_h']:.3f} m\n" if s else "N/A\n"),
+            ("lbl", "Height : "), ("val", f"{r['Height']:.3f} m\n"),
             ("lbl", "\n\u2500\u2500 Precision \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"),
             ("lbl", "\u03c3\u03c6      : "), ("ok",  f"{r['Lat_std']*3600:.5f}\"\n"),
             ("lbl", "\u03c3\u03bb      : "), ("ok",  f"{r['Lon_std']*3600:.5f}\"\n"),
@@ -767,9 +717,7 @@ class App(tk.Tk):
         _row(c1, "Longitude (\u03bb)",  f"{lon:.8f}\u00b0")
         _row(c1, "            ",   f"{_dms(lon)} E", MUTED, 9)
         _divider(c1)
-        _row(c1, "Height (Ellip h)",     f"{h:.3f} m")
-        _row(c1, "Geoid Sep. (N)",       f"{self.geoid_n:.3f} m")
-        _row(c1, "Elevation (MSL H)",    f"{s['msl_h']:.3f} m", val_fg=GREEN)
+        _row(c1, "Height (h)",     f"{h:.3f} m")
 
         c2 = _card(f, "EVEREST 1830 (1937 ADJ) \u2014 Geodetic", VIOLET)
         _row(c2, "Latitude  (\u03c6)",  f"{s['eve_lat_deg']:.8f}\u00b0")
