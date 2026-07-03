@@ -23,13 +23,14 @@ class SLD99Transformer:
 
     Datum transformation: EPSG:5236 — SLD99 -> WGS84, Coordinate Frame Rotation
     (EPSG method 9607). Parameters verified against SLD99_Uditha.csys field file.
-    Projection: EPSG:5235 Sri Lanka Grid 1999 (Transverse Mercator on Everest 1830 Modified).
+    Projection: EPSG:5235 Sri Lanka Grid 1999 (Transverse Mercator on
+    Everest 1830 (1937 Adjustment) ellipsoid).
     """
     # WGS84 ellipsoid (EPSG:7030)
     _WGS84_a = 6_378_137.0
     _WGS84_f = 1.0 / 298.257_223_563
 
-    # Everest 1830 Modified ellipsoid (EPSG:7042), used by SLD99
+    # Everest 1830 (1937 Adjustment) ellipsoid (EPSG:7015), used by SLD99
     _EVE_a   = 6_377_276.345
     _EVE_f   = 1.0 / 300.8017
 
