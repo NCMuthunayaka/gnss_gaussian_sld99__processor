@@ -55,6 +55,8 @@ def gaussian_iterative_rejection(df, log_cb=None):
             log_cb(msg, tag)
 
     clean = df.copy()
+    if len(clean) < 3:
+        raise ValueError("At least 3 valid epochs are required for Gaussian rejection.")
     iterations = []
 
     for iteration in range(1, 10_000):
@@ -63,6 +65,8 @@ def gaussian_iterative_rejection(df, log_cb=None):
         my = float(clean["Y"].mean())
         sx = float(clean["X"].std(ddof=1))
         sy = float(clean["Y"].std(ddof=1))
+        if not np.isfinite(sx) or not np.isfinite(sy):
+            raise ValueError("Coordinate spread could not be estimated from the input data.")
 
         e50_x  = 0.6745 * sx
         e50_y  = 0.6745 * sy
@@ -112,33 +116,51 @@ def gaussian_iterative_rejection(df, log_cb=None):
         if n_flagged == 0:
             _log(f"   Converged after {iteration} iteration(s).\n", "ok")
             break
+        if n - n_flagged < 3:
+            _log("   Stopping: rejection would leave fewer than 3 epochs.\n", "warn")
+            break
         clean = clean[~flagged].copy()
 
     return clean, iterations
 
 def weighted_mean(df):
     """Compute the coordinate weighted mean using 1 / PDOP^2 weight coefficient."""
-    pdop = df["PDOP"].replace(0, float(df["PDOP"].median()))
+    if df.empty:
+        raise ValueError("No clean epochs remain for the coordinate mean.")
+    pdop = pd.to_numeric(df["PDOP"], errors="coerce")
+    valid_pdop = pdop[np.isfinite(pdop) & (pdop > 0)]
+    fallback = float(valid_pdop.median()) if len(valid_pdop) else 1.0
+    pdop = pdop.where(np.isfinite(pdop) & (pdop > 0), fallback)
     weights = 1.0 / (pdop ** 2)
     total = weights.sum()
     n = len(df)
+    lon_mean = float((df["X"] * weights).sum() / total)
+    lat_mean = float((df["Y"] * weights).sum() / total)
+    # The uncertainty of a weighted mean should use the same weights as the
+    # estimate.  Using unweighted s/sqrt(n) here would under/overstate the
+    # precision whenever PDOP varies across epochs.
+    effective_n = float(total ** 2 / (weights ** 2).sum())
+    weighted_var_x = float((weights * (df["X"] - lon_mean) ** 2).sum() / total)
+    weighted_var_y = float((weights * (df["Y"] - lat_mean) ** 2).sum() / total)
+    sem_x = math.sqrt(max(weighted_var_x, 0.0) / max(effective_n, 1.0))
+    sem_y = math.sqrt(max(weighted_var_y, 0.0) / max(effective_n, 1.0))
     sx = float(df["X"].std(ddof=1))
     sy = float(df["Y"].std(ddof=1))
     mean_h = float((df["Height"] * weights).sum() / total) if "Height" in df.columns else 0.0
     return {
-        "Lon":       float((df["X"] * weights).sum() / total),
-        "Lat":       float((df["Y"] * weights).sum() / total),
+        "Lon":       lon_mean,
+        "Lat":       lat_mean,
         "Height":    mean_h,
-        "X":         float((df["X"] * weights).sum() / total),
-        "Y":         float((df["Y"] * weights).sum() / total),
+        "X":         lon_mean,
+        "Y":         lat_mean,
         "X_std":     sx,
         "Y_std":     sy,
         "Lon_std":   sx,
         "Lat_std":   sy,
         "n_epochs":  n,
         "PDOP_mean": float(df["PDOP"].mean()),
-        "S_mean_x":  sx / math.sqrt(n),
-        "S_mean_y":  sy / math.sqrt(n),
-        "S_mean_lon": sx / math.sqrt(n),
-        "S_mean_lat": sy / math.sqrt(n),
+        "S_mean_x":  sem_x,
+        "S_mean_y":  sem_y,
+        "S_mean_lon": sem_x,
+        "S_mean_lat": sem_y,
     }
