@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tkinter Application and Plotting Module
 
 Implements the user interface, scatter/gaussian distribution plots,
@@ -23,18 +23,19 @@ from transformer import SLD99Transformer
 from processor import parse_out_file, gaussian_iterative_rejection, weighted_mean
 
 # UI Color Palette System
-DARK   = "#0f172a"
-PANEL  = "#1e293b"
-BORDER = "#334155"
-TEXT   = "#e2e8f0"
-MUTED  = "#94a3b8"
-BLUE   = "#38bdf8"
-GREEN  = "#4ade80"
-RED    = "#f87171"
-AMBER  = "#fbbf24"
-VIOLET = "#a78bfa"
-BTN_BG = "#0ea5e9"
-TEAL   = "#2dd4bf"
+DARK   = "#0b1220"
+PANEL  = "#162235"
+BORDER = "#293b55"
+TEXT   = "#edf4ff"
+MUTED  = "#9aabc2"
+BLUE   = "#55b9ff"
+GREEN  = "#5ee39a"
+RED    = "#ff7f91"
+AMBER  = "#f7c866"
+VIOLET = "#b7a2ff"
+BTN_BG = "#2387d9"
+TEAL   = "#43d6c2"
+UI_FONT = "Segoe UI"
 
 def _dms(deg):
     """Convert decimal degrees to Degrees Minutes Seconds (DMS) string representation."""
@@ -182,14 +183,17 @@ class CustomNavigationToolbar(NavigationToolbar2Tk):
 
 def make_plot(raw, clean, result, last_iter, sld99=None):
     """Generate high-quality geodetic scatter plot and Gaussian error distribution graphs."""
-    fig = plt.figure(figsize=(10, 22))
+    # Keep the figure compact enough for a normal laptop window.  The canvas is
+    # scrollable, but a very tall figure makes the controls and legends feel
+    # disconnected from the plot they describe.
+    fig = plt.figure(figsize=(10.5, 17.5), constrained_layout=False)
     fig.patch.set_facecolor("#0f172a")
 
     gs = gridspec.GridSpec(
         4, 1,
         hspace=0.45,
-        left=0.08, right=0.78,
-        top=0.93,  bottom=0.02)
+        left=0.08, right=0.96,
+        top=0.93,  bottom=0.035)
 
     ax_sc  = fig.add_subplot(gs[0])
     ax_hx  = fig.add_subplot(gs[1])
@@ -263,7 +267,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         handles=[h_raw, h_cln, (h_star, h_dot), h_ellipse],
         labels=[f"All epochs ({len(raw)})", f"Clean epochs ({len(clean)})", "Weighted mean", "2\u03c3 ellipse"],
         handler_map={tuple: handler.HandlerTuple(ndivide=None)},
-        loc="upper left", bbox_to_anchor=(1.02, 1.0),
+        loc="upper right",
         fontsize=8, facecolor=DARK, edgecolor=BORDER, labelcolor=TEXT, framealpha=0.95)
 
     # Override legend markers to make them solid and larger for readability
@@ -308,7 +312,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
         ax_h.set_xlabel(label, color=MUTED, fontsize=8)
         ax_h.set_ylabel("Density", color=MUTED, fontsize=8)
         ax_h.grid(True, color=BORDER, linewidth=0.5, zorder=1)
-        ax_h.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
+        ax_h.legend(loc="upper right",
                     fontsize=7, facecolor=DARK, edgecolor=BORDER,
                     labelcolor=TEXT, framealpha=0.9)
 
@@ -334,7 +338,7 @@ def make_plot(raw, clean, result, last_iter, sld99=None):
     ax_bar.set_title("Sigma Zone Distribution",
                      color=TEXT, fontsize=9, fontweight="bold", pad=5)
     ax_bar.grid(True, axis="y", color=BORDER, linewidth=0.5, zorder=1)
-    ax_bar.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0),
+    ax_bar.legend(loc="upper right",
                   fontsize=7, facecolor=DARK, edgecolor=BORDER,
                   labelcolor=TEXT, framealpha=0.9)
     for bars in (bx, by, be):
@@ -356,8 +360,9 @@ class App(tk.Tk):
         super().__init__()
         self.title("GNSS Gaussian Processor + SLD99  [EPSG:5235]")
         self.configure(bg=DARK)
-        self.geometry("1380x800")
-        self.minsize(1100, 660)
+        self.geometry("1440x900")
+        self.minsize(1180, 720)
+        self.option_add("*Font", (UI_FONT, 10))
         self.filepath = ""
         self.raw_df = None
         self.clean_df = None
@@ -367,40 +372,41 @@ class App(tk.Tk):
         self._build()
 
     def _build(self):
-        sb = tk.Frame(self, bg=PANEL, padx=18, pady=18)
+        sb = tk.Frame(self, bg=PANEL, padx=16, pady=16, width=292)
         sb.pack(side="left", fill="y", padx=(10, 4), pady=10)
+        sb.pack_propagate(False)
 
         tk.Label(sb, text="GNSS",
                  bg=PANEL, fg=BLUE,
-                 font=("Courier New", 22, "bold")).pack(anchor="w")
+                 font=(UI_FONT, 24, "bold")).pack(anchor="w")
         tk.Label(sb, text="Gaussian + SLD99",
                  bg=PANEL, fg=MUTED,
-                 font=("Courier New", 10)).pack(anchor="w", pady=(0, 2))
+                 font=(UI_FONT, 10)).pack(anchor="w", pady=(0, 2))
         tk.Label(sb, text="Ghilani \u00a73.6  Iterative\nOutlier Rejection",
                  bg=PANEL, fg=VIOLET,
-                 font=("Courier New", 9, "italic")).pack(anchor="w")
+                 font=(UI_FONT, 9, "italic")).pack(anchor="w")
 
         self._sep(sb)
         self._section(sb, "INPUT FILE")
         self.lbl_file = tk.Label(sb, text="No file selected",
                                  bg="#0f2744", fg=MUTED,
-                                 font=("Courier New", 9),
-                                 wraplength=230, justify="left",
+                                 font=("Segoe UI", 9),
+                                 wraplength=252, justify="left",
                                  padx=6, pady=5)
         self.lbl_file.pack(fill="x", pady=(4, 6))
         self._btn(sb, "  Browse .out file", self._browse, BTN_BG)
 
         self._sep(sb)
         self._btn(sb, "  Run Full Analysis", self._run, "#16a34a",
-                  font=("Courier New", 12, "bold"), pady=10)
+                  font=("Segoe UI", 12, "bold"), pady=10)
 
         self._sep(sb)
         self._section(sb, "RESULTS SUMMARY")
         self.res_box = tk.Text(sb, bg="#0f172a", fg=TEXT,
-                               font=("Courier New", 9),
+                               font=("Segoe UI", 9),
                                relief="flat", height=30,
                                state="disabled", bd=0,
-                               width=28, padx=10, pady=8)
+                               width=30, padx=10, pady=8)
         self.res_box.pack(fill="x", pady=(4, 0))
         for tag, fg, bold in [
             ("lbl",  MUTED,  False), ("val",  BLUE,   True),
@@ -410,7 +416,7 @@ class App(tk.Tk):
         ]:
             self.res_box.tag_configure(
                 tag, foreground=fg,
-                font=("Courier New", 9, "bold") if bold else ("Courier New", 9))
+                font=("Segoe UI", 9, "bold") if bold else ("Segoe UI", 9))
 
         right = tk.Frame(self, bg=DARK)
         right.pack(side="left", fill="both", expand=True, padx=(4, 10), pady=10)
@@ -420,7 +426,7 @@ class App(tk.Tk):
         style.configure("Dark.TNotebook", background=DARK, borderwidth=0)
         style.configure("Dark.TNotebook.Tab",
                         background=BORDER, foreground=MUTED,
-                        font=("Courier New", 9), padding=(14, 6))
+                        font=("Segoe UI", 9), padding=(14, 6))
         style.map("Dark.TNotebook.Tab",
                   background=[("selected", BTN_BG)],
                   foreground=[("selected", DARK)])
@@ -431,7 +437,7 @@ class App(tk.Tk):
         lf = tk.Frame(self.nb, bg="#0b1120")
         self.nb.add(lf, text="  Log  ")
         self.log_txt = tk.Text(lf, bg="#0b1120", fg=TEXT,
-                               font=("Courier New", 9), relief="flat",
+                               font=("Segoe UI", 9), relief="flat",
                                state="disabled", wrap="word", bd=0,
                                padx=10, pady=10)
         sbl = tk.Scrollbar(lf, command=self.log_txt.yview,
@@ -446,7 +452,7 @@ class App(tk.Tk):
         ]:
             self.log_txt.tag_configure(
                 tag, foreground=fg,
-                font=("Courier New", 9, "bold") if bold else ("Courier New", 9))
+                font=("Segoe UI", 9, "bold") if bold else ("Segoe UI", 9))
 
         self.tbl_frame = tk.Frame(self.nb, bg=DARK)
         self.nb.add(self.tbl_frame, text="  Statistics Table  ")
@@ -462,7 +468,7 @@ class App(tk.Tk):
         self.plot_ctrl = tk.Frame(self.plot_frame, bg=PANEL, padx=10, pady=6)
         self.plot_ctrl.pack(side="top", fill="x")
         self.lbl_ctrl_placeholder = tk.Label(self.plot_ctrl, text="Plot controls will appear here after running analysis",
-                                             bg=PANEL, fg=MUTED, font=("Courier New", 9, "italic"))
+                                             bg=PANEL, fg=MUTED, font=("Segoe UI", 9, "italic"))
         self.lbl_ctrl_placeholder.pack(side="left", pady=2)
 
         # Scrollable container for plots
@@ -490,11 +496,11 @@ class App(tk.Tk):
         tk.Label(self.sld_frame,
                  text="SLD99 Coordinate Output  [EPSG:5235]",
                  bg=DARK, fg=TEAL,
-                 font=("Courier New", 14, "bold")).pack(anchor="w", padx=20, pady=(18, 2))
+                 font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=20, pady=(18, 2))
         tk.Label(self.sld_frame,
                  text="Sri Lanka Datum 1999  \u00b7  Transverse Mercator  \u00b7  FE=FN=500 000 m",
                  bg=DARK, fg=MUTED,
-                 font=("Courier New", 9)).pack(anchor="w", padx=20, pady=(0, 14))
+                 font=("Segoe UI", 9)).pack(anchor="w", padx=20, pady=(0, 14))
 
         canvas = tk.Canvas(self.sld_frame, bg=DARK, highlightthickness=0)
         vsb = tk.Scrollbar(self.sld_frame, orient="vertical",
@@ -524,11 +530,11 @@ class App(tk.Tk):
 
     def _section(self, p, text):
         tk.Label(p, text=text, bg=PANEL, fg=AMBER,
-                 font=("Courier New", 9, "bold")).pack(anchor="w")
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w")
 
     def _btn(self, p, text, cmd, bg, font=None, pady=7):
         tk.Button(p, text=text, command=cmd, bg=bg, fg=DARK,
-                  font=font or ("Courier New", 10, "bold"),
+                  font=font or ("Segoe UI", 10, "bold"),
                   relief="flat", pady=pady, cursor="hand2",
                   activebackground=BLUE,
                   activeforeground=DARK).pack(fill="x", pady=(4, 0))
@@ -652,7 +658,7 @@ class App(tk.Tk):
         tk.Label(self._sld_inner,
                  text="\n\n   Run Full Analysis to see SLD99 results here.",
                  bg=DARK, fg=MUTED,
-                 font=("Courier New", 10, "italic")).pack(anchor="w", padx=20)
+                 font=("Segoe UI", 10, "italic")).pack(anchor="w", padx=20)
 
     def _display_sld99(self, lat, lon, h, s):
         f = self._sld_inner
@@ -666,16 +672,16 @@ class App(tk.Tk):
             inner = tk.Frame(outer, bg=PANEL, padx=16, pady=12)
             inner.pack(fill="x")
             tk.Label(inner, text=title, bg=PANEL, fg=title_fg,
-                     font=("Courier New", 10, "bold")).pack(anchor="w", pady=(0, 8))
+                     font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(0, 8))
             return inner
 
         def _row(parent, label, value, val_fg=TEXT, val_size=10):
             row = tk.Frame(parent, bg=PANEL)
             row.pack(fill="x", pady=2)
             tk.Label(row, text=label, bg=PANEL, fg=MUTED,
-                     font=("Courier New", 9), width=22, anchor="w").pack(side="left")
+                     font=("Segoe UI", 9), width=22, anchor="w").pack(side="left")
             tk.Label(row, text=value, bg=PANEL, fg=val_fg,
-                     font=("Courier New", val_size, "bold")).pack(side="left")
+                     font=("Segoe UI", val_size, "bold")).pack(side="left")
 
         def _divider(parent):
             tk.Frame(parent, bg=BORDER, height=1).pack(fill="x", pady=6)
@@ -687,7 +693,7 @@ class App(tk.Tk):
         inner_hero.pack(fill="x")
         tk.Label(inner_hero, text="SLD99 FINAL COORDINATES  [EPSG:5235]",
                  bg="#0a1f3d", fg=TEAL,
-                 font=("Courier New", 11, "bold")).pack(anchor="w")
+                 font=("Segoe UI", 11, "bold")).pack(anchor="w")
         tk.Frame(inner_hero, bg=BORDER, height=1).pack(fill="x", pady=(6, 14))
         coords_frame = tk.Frame(inner_hero, bg="#0a1f3d")
         coords_frame.pack(fill="x")
@@ -695,20 +701,20 @@ class App(tk.Tk):
         e_block = tk.Frame(coords_frame, bg="#0d2a4a", padx=20, pady=16)
         e_block.pack(side="left", expand=True, fill="both", padx=(0, 8))
         tk.Label(e_block, text="EASTING  (E)", bg="#0d2a4a", fg=MUTED,
-                 font=("Courier New", 8, "bold")).pack(anchor="w")
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w")
         tk.Label(e_block, text=f"{s['SLD99_E']:,.3f}", bg="#0d2a4a", fg=BLUE,
-                 font=("Courier New", 18, "bold")).pack(anchor="w", pady=(4, 0))
+                 font=("Segoe UI", 18, "bold")).pack(anchor="w", pady=(4, 0))
         tk.Label(e_block, text="metres", bg="#0d2a4a", fg=MUTED,
-                 font=("Courier New", 8)).pack(anchor="w")
+                 font=("Segoe UI", 8)).pack(anchor="w")
 
         n_block = tk.Frame(coords_frame, bg="#0d3a1a", padx=20, pady=16)
         n_block.pack(side="left", expand=True, fill="both", padx=(8, 0))
         tk.Label(n_block, text="NORTHING  (N)", bg="#0d3a1a", fg=MUTED,
-                 font=("Courier New", 8, "bold")).pack(anchor="w")
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w")
         tk.Label(n_block, text=f"{s['SLD99_N']:,.3f}", bg="#0d3a1a", fg=GREEN,
-                 font=("Courier New", 18, "bold")).pack(anchor="w", pady=(4, 0))
+                 font=("Segoe UI", 18, "bold")).pack(anchor="w", pady=(4, 0))
         tk.Label(n_block, text="metres", bg="#0d3a1a", fg=MUTED,
-                 font=("Courier New", 8)).pack(anchor="w")
+                 font=("Segoe UI", 8)).pack(anchor="w")
 
         c1 = _card(f, "INPUT \u2014 WGS84 Geographic (weighted mean from file)", AMBER)
         _row(c1, "Latitude  (\u03c6)",  f"{lat:.8f}\u00b0")
@@ -736,17 +742,17 @@ class App(tk.Tk):
         style.configure("Stats.Treeview",
                         background=PANEL, foreground=TEXT,
                         fieldbackground=PANEL, rowheight=24,
-                        font=("Courier New", 9), borderwidth=0)
+                        font=("Segoe UI", 9), borderwidth=0)
         style.configure("Stats.Treeview.Heading",
                         background=BORDER, foreground=AMBER,
-                        font=("Courier New", 9, "bold"), relief="flat")
+                        font=("Segoe UI", 9, "bold"), relief="flat")
         style.map("Stats.Treeview",
                   background=[("selected", BTN_BG)],
                   foreground=[("selected", DARK)])
 
         def heading(text, fg=BLUE):
             tk.Label(self.tbl_frame, text=text, bg=DARK, fg=fg,
-                     font=("Courier New", 11, "bold")).pack(
+                     font=("Segoe UI", 11, "bold")).pack(
                 anchor="w", padx=10, pady=(10, 3))
 
         def make_tree(cols, widths, height):
@@ -862,7 +868,7 @@ class App(tk.Tk):
         zoom_frame.pack(side="left", fill="y")
 
         tk.Label(zoom_frame, text="Quick Zoom:", bg=PANEL, fg=MUTED,
-                 font=("Courier New", 9, "bold")).pack(side="left", padx=(0, 6), pady=5)
+                 font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 6), pady=5)
 
         def zoom_to_cluster():
             if hasattr(ax_sc, "cluster_limits"):
@@ -887,7 +893,7 @@ class App(tk.Tk):
 
         def make_zoom_btn(text, cmd, color):
             btn = tk.Button(zoom_frame, text=text, command=cmd, bg=color, fg=DARK,
-                            font=("Courier New", 9, "bold"), relief="flat", padx=10, pady=2,
+                            font=("Segoe UI", 9, "bold"), relief="flat", padx=10, pady=2,
                             cursor="hand2", activebackground=BLUE, activeforeground=DARK)
             btn.pack(side="left", padx=4, pady=2)
             return btn
@@ -898,3 +904,9 @@ class App(tk.Tk):
 
         canvas.get_tk_widget().pack(fill="both", expand=True)
         self.nb.select(3)
+
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
+
